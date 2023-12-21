@@ -1,20 +1,32 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, {useEffect, useContext} from "react";
 import { Context } from "../store/appContext";
 import { useNavigate } from "react-router-dom";
 
+
 const Private = () => {
+    const {store, actions} = useContext(Context);
     const navigate = useNavigate();
-    const { store, actions } = useContext(Context);
-    const token = sessionStorage.getItem("token");
-    useEffect(()=>{
-        if(!token || token != "" || token != undefined){
-            navigate("/login")
+
+    useEffect(() => {
+        function authenticate() {
+            actions.authenticateUser(navigate);
         }
-    })
+        setTimeout(() => {
+            authenticate() }, 500)        
+    }, [])
+
     return (
-        <div>
-            This is your private page.
+        <div className="container text-center">
+            <h1>Hello!</h1>
+            {store.user!= null ?
+                <div >
+                    <h2>Email: {store.user.email}</h2>
+                </div>
+                :
+                navigate("/login")
+            }
         </div>
-    )
+    );
 }
-export default Private 
+
+export default Private;

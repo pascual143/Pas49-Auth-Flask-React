@@ -1,133 +1,139 @@
 const getState = ({ getStore, getActions, setStore }) => {
-    return {
-        store: {
-            token: null,
-            message: null,
-            demo: [
-                {
-                    title: "FIRST",
-                    background: "white",
-                    initial: "white"
-                },
-                {
-                    title: "SECOND",
-                    background: "white",
-                    initial: "white"
-                }
-            ]
-        },
-        actions: {
-            exampleFunction: () => {
-                getActions().changeColor(0, "green");
-            },
+	return {
+		store: {
+			message: null,			
+			token: null,
+			user: null
+		},
+		actions: {
+			// Use getActions to call a function within a fuction
+			exampleFunction: () => {
+				getActions().changeColor(0, "green");
+			},
 
-            syncTokenFromSessionStore: () => {
-                const token = sessionStorage.getItem("token");
-                console.log("Application just loaded, syncing the session storage token");
-                if (token && token !== "" && token !== undefined) setStore({ token: token });
-            },
-
-            logout: () => {
-                sessionStorage.removeItem("token");
-                console.log("Logout");
-                setStore({ token: null });
-            },
-
-            login: async (email, password) => {
-                const opts = {
-					mode: 'cors',
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        email: email,
-                        password: password,
-                    }),
-                };
-
-                try {
-                    const resp = await fetch("https://ideal-meme-wg5745gp67x25jqp-3001.app.github.dev/api/login", opts);
-                    if (resp.status !== 200) {
-                        alert("There has been some error");
-                        return false;
-                    }
-
-                    const data = await resp.json();
-                    console.log("This came from the backend", data);
-                    sessionStorage.setItem("token", data.access_token);
-                    setStore({ token: data.access_token });
-                    return true;
-                } catch (error) {
-                    console.error("There has been an error logging in", error);
-                }
-            },
-
-            register: async (email, password) => {
-                const opts = {
-					mode: 'cors',
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        email: email,
-                        password: password,
-                    }),
-                };
-
-                try {
-                    const resp = await fetch("https://ideal-meme-wg5745gp67x25jqp-3001.app.github.dev/api/register", opts);
-                    if (resp.status !== 200) {
-                        alert("There has been some error");
-                        return false;
-                    }
-
-                    const data = await resp.json();
-                    console.log("This came from the backend", data);
-                    return true;
-                } catch (error) {
-                    console.error("There has been an error registering", error);
-                }
-            },
-
-            getMessage: async () => {
-                const store = getStore();
-                const opts = {
-					mode: 'cors',
-                    headers: {
-                        Authorization: "Bearer " + store.token
-                    }
-                };
-                try {
-                    const resp = await fetch("https://ideal-meme-wg5745gp67x25jqp-3001.app.github.dev/api/hello", opts);
-                    if (resp.status !== 200) {
-                        console.log("Error loading message from backend");
-                        return;
-                    }
-                    const data = await resp.json();
-                    setStore({ message: data.message });
-                } catch (error) {
-                    console.log("Error loading message from backend", error);
-                }
-            },
-
-            changeColor: (index, color) => {
-                const store = getStore();
-                const demo = store.demo.map((elm, i) => {
-                    if (i === index) {
-                        return {
-                            ...elm,
-                            background: color
-                        };
-                    } else {
-                        return elm;
-                    }
-                });
-                setStore({ demo: demo });
-            }
-        }
-    };
+			getMessage: async () => {
+				try{
+					// fetching data from the backend
+					const resp = await fetch(process.env.BACKEND_URL + "/api/hello")
+					const data = await resp.json()
+					setStore({ message: data.message })
+					// don't forget to return something, that is how the async resolves
+					return data;
+				}catch(error){
+					console.log("Error loading message from backend", error)
+				}
+			},
+			signUp: async (form, navigate) => {
+				const url = "https://ideal-meme-wg5745gp67x25jqp-3001.app.github.dev/api/signup";
+				await fetch(url, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						"Access-Control-Allow-Origin":"*",
+						"Access-Control-Allow-Methods":"*"
+					},
+					body: JSON.stringify({						
+						"email": form.email,
+                      	"password": form.password,
+						"is_active": true
+					})					
+				})
+				.then(async resp => {
+					console.log(resp.ok); // will be true if the response is successfull
+					console.log(resp.status); // the status code = 200 or code = 400 etc.
+					if(!resp.ok) {
+						alert("user already exists");
+						console.log(resp.status);
+						return false;
+						
+					}
+					await resp.json(); // (returns promise) will try to parse the result as json as return a promise that you can .then for results
+					navigate('/login');														
+				})
+				.catch(error => {
+					//error handling
+					console.log(error);
+				})
+			},
+			login: (form, navigate) => {
+				const store = getStore();
+				const url = "https://ideal-meme-wg5745gp67x25jqp-3001.app.github.dev/api/login";
+				fetch(url, {
+					method: "Post",
+					headers: {
+						"Content-Type": "application/json",
+						'Access-Control-Allow-Origin':'*'
+					},
+					body: JSON.stringify({						
+						"email": form.email,
+                      	"password": form.password
+					})					
+				})
+				.then(async resp => {
+					console.log(resp.ok); // will be true if the response is successfull
+					console.log(resp.status); // the status code = 200 or code = 400 etc.
+					if(!resp.ok){
+						alert("wrong username or password");
+						return false;						
+					}
+					//console.log(resp.text()); // will try return the exact result as string
+					const data = await resp.json();
+					sessionStorage.setItem("token", data.token);
+					setStore({token: data.token});
+					
+					console.log(store.token);
+					navigate('/private');
+				})				
+				.catch(error => {
+					//error handling
+					console.log(error);
+				})
+			},
+			authenticateUser: (navigate) => {
+				const store = getStore();
+				console.log(store.token);
+				const url = "https://ideal-meme-wg5745gp67x25jqp-3001.app.github.dev/api/private"
+				fetch(url, {
+					method: "GET",
+					headers: {
+						"Authorization": "Bearer " + store.token,
+						'Access-Control-Allow-Origin':'*'
+					}
+				})
+				.then(resp => {
+					console.log(resp.ok); // will be true if the response is successfull
+					console.log(resp.status); // the status code = 200 or code = 400 etc.
+					if(!resp.ok){
+						navigate("/login");
+						alert("Please login to continue");
+												
+					}
+					
+					//console.log(resp.text()); // will try return the exact result as string
+					return resp.json();
+				})
+				.then(data => {
+					setStore({user: data});
+					
+				})
+				.catch(error => {
+					//error handling
+					console.log(error);
+				})
+			},
+			tokenFromStore: () => {
+				let store = getStore();
+				const token = sessionStorage.getItem("token");
+				if (token && token!= null && token!=undefined) setStore({token: token});
+			},
+			logout: (navigate) => {			
+				setStore({user:null});
+				sessionStorage.removeItem("token");
+				setStore({token: null});
+				navigate("/");
+			}
+		}
+	};
 };
 
 export default getState;
